@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12306b">
+<title>AR Learning Laboratory</title>
+<style>
+:root{
+  --navy:#12306b; --navy2:#0c2150; --blue:#1d5cff; --blue2:#0e44d6;
+  --bg:#0b1530; --ink:#17203a; --muted:#5d6a82; --line:#d6ddea; --pill:#dfe4ec;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;color:var(--ink)}
+body{display:flex;align-items:center;justify-content:center;overscroll-behavior:none}
+
+.app{width:100%;max-width:440px;height:100dvh;max-height:900px;background:linear-gradient(180deg,#f2f5fa,#e6ebf3);display:flex;flex-direction:column;overflow:hidden;position:relative}
+@media(min-width:500px){.app{border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.55);height:min(100dvh - 24px,900px)}}
+
+/* header */
+header{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;display:flex;align-items:center;gap:12px;padding:12px 16px;flex:none;border-radius:0 0 0 0}
+.logo{width:42px;height:48px;flex:none}
+.brand{flex:1;min-width:0;line-height:1.1}
+.brand b{display:block;font-size:20px;letter-spacing:.5px}
+.brand span{font-size:12px;opacity:.85}
+.home{background:none;border:none;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 4px}
+.home svg{width:18px;height:18px;fill:#fff}
+
+/* title */
+.title{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px 6px;flex:none}
+.title .ico{font-size:40px;line-height:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+.title h1{margin:0;font-size:22px;color:#0e2250;line-height:1.1;letter-spacing:-.2px}
+.title p{margin:3px 0 0;font-size:14px;color:#25324f}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:8px 12px;flex:none}
+.tab{border:none;background:var(--pill);color:#2a3550;border-radius:14px;padding:9px 4px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-family:inherit}
+.tab .e{font-size:17px;line-height:1}
+.tab.on{background:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(29,92,255,.4)}
+
+/* stage */
+.stagewrap{padding:0 12px;flex:1;min-height:0;display:flex}
+.stage{position:relative;flex:1;min-height:220px;border-radius:6px;overflow:hidden;background:#111;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#video.mirror{transform:scaleX(-1)}
+#demo{position:absolute;inset:0;width:100%;height:100%}
+#layer{position:absolute;inset:0;z-index:2;touch-action:none}
+.corner{position:absolute;width:30px;height:30px;border:0 solid #1d6bff;z-index:4;pointer-events:none}
+.c1{left:8px;top:8px;border-left-width:4px;border-top-width:4px;border-top-left-radius:4px}
+.c2{right:8px;top:8px;border-right-width:4px;border-top-width:4px;border-top-right-radius:4px}
+.c3{left:8px;bottom:8px;border-left-width:4px;border-bottom-width:4px;border-bottom-left-radius:4px}
+.c4{right:8px;bottom:8px;border-right-width:4px;border-bottom-width:4px;border-bottom-right-radius:4px}
+
+.item{position:absolute;cursor:grab;touch-action:none;will-change:transform}
+.item:active{cursor:grabbing}
+.item svg{width:100%;height:auto;display:block;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.28))}
+.item.sel{outline:2px dashed rgba(77,163,255,.95);outline-offset:6px;border-radius:8px}
+.hs{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(29,92,255,.92);color:#fff;font:700 12px/22px "Segoe UI",sans-serif;font-style:normal;text-align:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none;display:none}
+.item.sel .hs{display:block}
+.hs.on{background:#ff8a00;animation:pulse 1s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,138,0,.7)}100%{box-shadow:0 0 0 12px rgba(255,138,0,0)}}
+
+.side{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:12px}
+.ctl{width:44px;height:44px;border-radius:12px;border:none;background:rgba(255,255,255,.95);color:var(--blue);font-size:22px;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:0 3px 10px rgba(0,0,0,.3);font-family:inherit}
+.ctl:active:not(:disabled){background:#dfe9ff}
+.ctl:disabled{opacity:.45;cursor:default}
+.ctl.del{color:#2a3145}
+.swbtn{position:absolute;left:14px;top:46px;z-index:6;width:36px;height:36px;border-radius:50%;border:none;background:rgba(10,15,28,.6);color:#fff;font-size:16px;cursor:pointer}
+
+.sheet{position:absolute;left:12px;right:68px;bottom:12px;z-index:6;background:rgba(255,255,255,.95);backdrop-filter:blur(6px);border-radius:14px;padding:8px 10px 9px;box-shadow:0 4px 16px rgba(0,0,0,.3);font-size:12px}
+.sh-top{display:flex;align-items:center;gap:8px}
+.sh-top b{font-size:14px;color:#0e2250}
+.sh-top .tag{font-size:10px;font-weight:700;color:#fff;background:var(--blue);padding:2px 7px;border-radius:99px}
+.sh-top .x{margin-left:auto;border:none;background:none;font-size:15px;color:var(--muted);cursor:pointer;padding:2px 4px}
+.sheet p{margin:4px 0 0;line-height:1.35;color:#2b3752}
+.sheet .fact{color:#8a5a00;font-size:11px}
+.chips{display:flex;gap:5px;overflow-x:auto;margin-top:6px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:#f1f4fa;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:600;color:#26324d;cursor:pointer;font-family:inherit}
+.chip.on{background:#ff8a00;border-color:#ff8a00;color:#fff}
+
+.msg{position:absolute;inset:0;z-index:9;background:rgba(8,14,32,.88);color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.msg div{max-width:290px}
+.msg p{font-size:13px;line-height:1.5;margin:8px 0 14px}
+.toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:9;background:rgba(10,15,28,.88);color:#fff;font-size:12px;padding:7px 13px;border-radius:99px;max-width:88%;text-align:center;transition:opacity .3s;pointer-events:none}
+.flash{position:absolute;inset:0;background:#fff;z-index:10;opacity:0;pointer-events:none}
+.flash.go{animation:fl .35s ease-out}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+
+/* bottom actions */
+.actions{display:flex;gap:12px;padding:12px 14px 10px;flex:none;align-items:stretch}
+.btn{border:none;border-radius:14px;padding:13px 16px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:var(--blue);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;box-shadow:0 4px 12px rgba(29,92,255,.35)}
+.btn:active{background:var(--blue2)}
+.btn.main{flex:1.25}
+.btn.sec{background:#f3f5f9;color:#1c2540;box-shadow:0 2px 8px rgba(0,0,0,.14);flex:1}
+.btn.sec:active{background:#e1e6f0}
+.btn.snap{flex:none;width:52px;padding:0;background:#f3f5f9;color:#1c2540;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.14)}
+.btn.full{width:100%;box-shadow:none}
+footer{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;text-align:center;font-size:12px;padding:12px 8px calc(12px + env(safe-area-inset-bottom));flex:none}
+
+/* modals */
+.modal{position:absolute;inset:0;z-index:30;background:rgba(6,10,22,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+.mcard{background:#fff;border-radius:18px;padding:16px;width:100%;max-width:400px;max-height:92%;overflow:auto}
+.mcard h3{margin:0 0 6px;font-size:18px;color:#0e2250}
+.mcard h4{margin:12px 0 4px;font-size:13px;color:var(--blue)}
+.mcard p,.mcard li{font-size:13px;line-height:1.5;color:#33405a}
+.mcard ul{margin:4px 0;padding-left:18px}
+.mcard img{width:100%;border-radius:12px;display:block;max-height:58vh;object-fit:contain;background:#000}
+.mrow{display:flex;gap:8px;margin-top:12px}
+.mrow>*{flex:1;text-align:center;text-decoration:none}
+a.btn{display:block;line-height:1.2}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header>
+    <svg class="logo" viewBox="0 0 48 56" aria-hidden="true">
+      <path d="M24 2 L44 8 V28 C44 42 34 50 24 54 C14 50 4 42 4 28 V8Z" fill="#fff" stroke="#c9d6f2" stroke-width="1.5"/>
+      <path d="M24 8 L38 12 V28 C38 38 31 44 24 48 C17 44 10 38 10 28 V12Z" fill="#12306b"/>
+      <text x="24" y="33" fill="#fff" font-size="11" font-weight="800" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif">ULK</text>
+    </svg>
+    <div class="brand"><b>ULK</b><span>Kigali Independent University</span></div>
+    <button class="home" id="homeBtn"><svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg>Home</button>
+  </header>
+
+  <div class="title">
+    <div class="ico">🖥️</div>
+    <div><h1>AR Learning Laboratory</h1><p>Explore Computer Equipment</p></div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-k="monitor"><span class="e">🖥️</span>Monitor</button>
+    <button class="tab" data-k="keyboard"><span class="e">⌨️</span>Keyboard</button>
+    <button class="tab" data-k="mouse"><span class="e">🖱️</span>Mouse</button>
+    <button class="tab" data-k="printer"><span class="e">🖨️</span>Printer</button>
+  </nav>
+
+  <div class="stagewrap">
+    <section class="stage" id="stage">
+      <video id="video" playsinline muted autoplay hidden></video>
+
+      <svg id="demo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="dwall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3d3b4"/><stop offset="1" stop-color="#cdb98f"/></linearGradient>
+          <linearGradient id="dwood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8924f"/><stop offset="1" stop-color="#9a6a33"/></linearGradient>
+        </defs>
+        <rect width="400" height="500" fill="url(#dwall)"/>
+        <!-- bookshelf -->
+        <rect x="292" y="20" width="108" height="290" fill="#6b4524"/>
+        <rect x="298" y="26" width="96" height="278" fill="#3d2713"/>
+        <g stroke="#6b4524" stroke-width="5"><path d="M298 92H394M298 158H394M298 224H394"/></g>
+        <g>
+          <rect x="302" y="48" width="9" height="42" fill="#2d5a8a"/><rect x="313" y="54" width="8" height="36" fill="#a33a3a"/><rect x="323" y="44" width="10" height="46" fill="#d8c27a"/><rect x="335" y="52" width="8" height="38" fill="#3b7a57"/><rect x="345" y="46" width="9" height="44" fill="#7a4a8a"/><rect x="356" y="56" width="8" height="34" fill="#c9702f"/><rect x="366" y="48" width="10" height="42" fill="#2d5a8a"/><rect x="378" y="52" width="9" height="38" fill="#8f3a3a"/>
+          <rect x="304" y="114" width="10" height="42" fill="#c9702f"/><rect x="316" y="120" width="8" height="36" fill="#2d5a8a"/><rect x="326" y="112" width="9" height="44" fill="#3b7a57"/><rect x="337" y="118" width="10" height="38" fill="#d8c27a"/><rect x="349" y="114" width="8" height="42" fill="#a33a3a"/><rect x="359" y="120" width="10" height="36" fill="#7a4a8a"/><rect x="371" y="112" width="9" height="44" fill="#2d5a8a"/>
+          <rect x="302" y="182" width="9" height="42" fill="#3b7a57"/><rect x="313" y="176" width="10" height="48" fill="#a33a3a"/><rect x="325" y="184" width="8" height="40" fill="#d8c27a"/><rect x="335" y="178" width="9" height="46" fill="#2d5a8a"/><rect x="346" y="186" width="10" height="38" fill="#c9702f"/><rect x="358" y="180" width="8" height="44" fill="#7a4a8a"/>
+          <rect x="304" y="246" width="10" height="58" fill="#8f3a3a"/><rect x="316" y="252" width="9" height="52" fill="#2d5a8a"/><rect x="327" y="244" width="10" height="60" fill="#d8c27a"/>
+        </g>
+        <!-- plant -->
+        <g>
+          <path d="M60 300 H112 L106 372 H66 Z" fill="#f2efe8" stroke="#d9d4c6"/>
+          <ellipse cx="86" cy="300" rx="30" ry="6" fill="#4a3b2a"/>
+          <ellipse cx="62" cy="262" rx="12" ry="30" transform="rotate(-35 62 262)" fill="#3e8a45"/>
+          <ellipse cx="86" cy="250" rx="12" ry="36" fill="#4aa055"/>
+          <ellipse cx="110" cy="262" rx="12" ry="30" transform="rotate(35 110 262)" fill="#3e8a45"/>
+          <ellipse cx="74" cy="282" rx="10" ry="22" transform="rotate(-60 74 282)" fill="#2f7a3a"/>
+          <ellipse cx="98" cy="282" rx="10" ry="22" transform="rotate(60 98 282)" fill="#2f7a3a"/>
+        </g>
+        <!-- desk -->
+        <rect x="0" y="300" width="400" height="200" fill="url(#dwood)"/>
+        <rect x="0" y="300" width="400" height="5" fill="#e0b074"/>
+        <g stroke="rgba(70,40,10,.22)" stroke-width="1.2" fill="none">
+          <path d="M0 330C100 322 200 340 400 328M0 372C120 366 260 380 400 372M0 420C140 412 250 430 400 418M0 468C100 462 260 476 400 466"/>
+        </g>
+      </svg>
+
+      <div id="layer"></div>
+      <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+
+      <button class="swbtn" id="swBtn" title="Switch camera" aria-label="Switch camera" hidden>🔄</button>
+
+      <div class="side">
+        <button class="ctl" data-act="rotate" title="Rotate (R)" aria-label="Rotate" disabled>↻</button>
+        <button class="ctl" data-act="bigger" title="Bigger (+)" aria-label="Bigger" disabled>⤢</button>
+        <button class="ctl" data-act="smaller" title="Smaller (−)" aria-label="Smaller" disabled>⤡</button>
+        <button class="ctl del" data-act="del" title="Remove (Del)" aria-label="Remove" disabled>🗑</button>
+      </div>
+
+      <div class="sheet" id="sheet" hidden>
+        <div class="sh-top"><b id="shName"></b><span class="tag" id="shTag"></span><button class="x" id="shClose" aria-label="Hide info">✕</button></div>
+        <p id="shText"></p>
+        <p class="fact" id="shFact"></p>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="msg" id="msg" hidden>
+        <div><div style="font-size:40px">📷</div><p id="msgTxt"></p><button class="btn full" id="msgOk">OK</button></div>
+      </div>
+      <div class="toast" id="toast" style="opacity:0"></div>
+      <div class="flash" id="flash"></div>
+    </section>
+  </div>
+
+  <div class="actions">
+    <button class="btn main" id="camBtn"><span id="camIco">📷</span><span id="camTxt">Start Camera</span></button>
+    <button class="btn snap" id="snapBtn" title="Take photo" aria-label="Take photo">📸</button>
+    <button class="btn sec" id="aboutBtn">ℹ️ About</button>
+  </div>
+  <footer>ULK • HCI Project</footer>
+
+  <div class="modal" id="photoModal" hidden>
+    <div class="mcard">
+      <h3>Your AR snapshot</h3>
+      <img id="photoImg" alt="Captured view with equipment">
+      <div class="mrow">
+        <a class="btn" id="dlBtn" download="ar-lab.png">⬇ Save</a>
+        <button class="btn sec" id="shareBtn" hidden>Share</button>
+        <button class="btn sec" id="closePhoto">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="aboutModal" hidden>
+    <div class="mcard">
+      <h3>AR Learning Laboratory</h3>
+      <p>A web-based Augmented Reality app that lets students explore computer equipment — monitor, keyboard, mouse and printer — by placing virtual devices over the live camera view.</p>
+      <h4>How to use</h4>
+      <ul>
+        <li>Tap <b>Start Camera</b> and allow access (phone or PC webcam).</li>
+        <li>Tap a tab (<b>Monitor, Keyboard, Mouse, Printer</b>) to place that device.</li>
+        <li><b>Drag</b> to move. <b>Pinch</b> with two fingers to resize and rotate.</li>
+        <li>Use the side buttons to rotate, enlarge, shrink or delete the selected device.</li>
+        <li>Tap the numbered chips in the info card to learn what each part does.</li>
+        <li>PC: wheel = resize, Shift + wheel = rotate, Del = remove, arrows = nudge.</li>
+        <li>📸 saves a picture of your AR scene.</li>
+      </ul>
+      <h4>Technologies</h4>
+      <p>HTML5, CSS3, JavaScript, WebRTC camera access (getUserMedia), SVG graphics, Canvas, Pointer Events (touch + mouse), localStorage.</p>
+      <h4>Learning objectives</h4>
+      <ul>
+        <li>Identify common input and output devices.</li>
+        <li>Name the main parts of each device and what they do.</li>
+      </ul>
+      <button class="btn full" id="closeAbout" style="margin-top:12px">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), layer = $('#layer'), video = $('#video'), demo = $('#demo');
+const KEY = 'ulk-ar-lab-v1';
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const SH = (cx, cy, rx, ry) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="rgba(0,0,0,.3)"/>`;
+
+/* ---------- equipment catalog ---------- */
+const keyRows = () => {
+  let k = '';
+  [[13,24,10,0],[14,38,15,0],[13,56,15,6],[12,74,15,12]].forEach(([n,y,h,o]) => {
+    for (let i = 0; i < n; i++) k += `<rect x="${14 + o + i * 23.5}" y="${y}" width="21" height="${h}" rx="3" fill="#3a4250"/>`;
+  });
+  return k + `<rect x="14" y="92" width="44" height="15" rx="3" fill="#3a4250"/><rect x="64" y="92" width="150" height="15" rx="3" fill="#3a4250"/><rect x="220" y="92" width="44" height="15" rx="3" fill="#3a4250"/><rect x="270" y="92" width="44" height="15" rx="3" fill="#3a4250"/>`;
+};
+const DEFS = {
+  monitor: {
+    k:'monitor', name:'Monitor', kind:'Output device', vw:300, vh:260, w:.52, pos:[.5,.46],
+    desc:'A monitor is an output device. It shows the text, pictures and video the computer produces.',
+    fact:'💡 A Full HD screen has 1920 × 1080 ≈ 2 million pixels.',
+    parts:[
+      { l:'Screen', x:150, y:92, t:'The display panel (LCD/LED). It is made of millions of tiny pixels, each mixing red, green and blue light.' },
+      { l:'Bezel', x:13, y:100, t:'The frame around the panel. It holds the electronics and protects the edges of the screen.' },
+      { l:'Stand', x:150, y:214, t:'Supports the screen and lets you tilt it. Many stands also adjust the height.' },
+      { l:'Power', x:268, y:184, t:'The power button and LED. The light shows if the monitor is on or in standby mode.' }
+    ],
+    body:() => `${SH(150,250,74,7)}
+      <path d="M104 248 H196 Q202 248 200 241 L193 232 H107 L100 241 Q98 248 104 248Z" fill="#1b1f27"/>
+      <rect x="138" y="188" width="24" height="48" fill="#2a2f3a"/>
+      <rect x="10" y="8" width="280" height="184" rx="10" fill="#14181f"/>
+      <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a63f0"/><stop offset="1" stop-color="#0a2686"/></linearGradient></defs>
+      <rect x="18" y="16" width="264" height="162" rx="3" fill="url(#mg)"/>
+      <path d="M18 128 C70 70 130 150 195 96 S262 60 282 78 V178 H18Z" fill="#5d8dff" opacity=".45"/>
+      <path d="M18 150 C80 110 150 170 220 130 S270 120 282 124 V178 H18Z" fill="#0b2a98" opacity=".6"/>
+      <rect x="138" y="181" width="24" height="4" rx="2" fill="#3a404c"/>
+      <circle cx="268" cy="184" r="3" fill="#35e08a"/>`
+  },
+  keyboard: {
+    k:'keyboard', name:'Keyboard', kind:'Input device', vw:360, vh:140, w:.66, pos:[.5,.8],
+    desc:'A keyboard is an input device. You press keys to send letters, numbers and commands to the computer.',
+    fact:'💡 The QWERTY layout comes from 1870s typewriters and is named after the first six letter keys.',
+    parts:[
+      { l:'Function keys', x:80, y:29, t:'The top row (F1–F12). They trigger shortcuts, for example F5 refreshes a page.' },
+      { l:'Main keys', x:150, y:66, t:'Letters, numbers and symbols. Each press closes a switch under the key and sends a code to the computer.' },
+      { l:'Space bar', x:140, y:100, t:'The longest key. It inserts a space between words.' },
+      { l:'USB cable', x:186, y:6, t:'Connects the keyboard to the computer and carries the key presses. Wireless keyboards use Bluetooth instead.' }
+    ],
+    body:() => `${SH(180,130,164,6)}
+      <path d="M180 14 C180 6 186 4 194 2" stroke="#0e1015" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <rect x="4" y="14" width="352" height="108" rx="12" fill="#1c2027"/>
+      <rect x="4" y="14" width="352" height="6" rx="3" fill="#2d333d"/>
+      ${keyRows()}`
+  },
+  mouse: {
+    k:'mouse', name:'Mouse', kind:'Input device', vw:120, vh:190, w:.17, pos:[.8,.82],
+    desc:'A mouse is a pointing input device. Moving it moves the pointer on the screen, and the buttons select things.',
+    fact:'💡 The first mouse prototype from the 1960s was made of wood.',
+    parts:[
+      { l:'Left button', x:38, y:66, t:'The primary button. Click to select, double-click to open.' },
+      { l:'Right button', x:82, y:66, t:'Opens a context menu with extra options for whatever you clicked.' },
+      { l:'Scroll wheel', x:60, y:46, t:'Scrolls pages up and down. Pressing it often works as a middle button.' },
+      { l:'Sensor', x:60, y:132, t:'An optical sensor under the mouse takes many pictures of the surface each second to detect movement.' }
+    ],
+    body:() => `${SH(60,182,38,6)}
+      <path d="M60 18 C60 8 52 6 46 0" stroke="#0e1015" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M60 16 C28 16 20 50 20 104 C20 152 36 178 60 178 C84 178 100 152 100 104 C100 50 92 16 60 16Z" fill="#1b1f27"/>
+      <path d="M60 16 C34 16 24 40 22 84 H60Z" fill="#2c323d"/>
+      <path d="M60 16 C86 16 96 40 98 84 H60Z" fill="#262c36"/>
+      <path d="M60 18 V84 M21 84 H99" stroke="#0a0c10" stroke-width="2" fill="none"/>
+      <rect x="54" y="34" width="12" height="26" rx="6" fill="#6a7587"/>`
+  },
+  printer: {
+    k:'printer', name:'Printer', kind:'Output device', vw:300, vh:220, w:.54, pos:[.5,.62],
+    desc:'A printer is an output device. It turns digital documents and pictures into paper copies.',
+    fact:'💡 Inkjet printers spray tiny ink droplets; laser printers fuse toner powder to paper with heat.',
+    parts:[
+      { l:'Input tray', x:150, y:26, t:'Holds blank paper. The printer pulls one sheet at a time into the machine.' },
+      { l:'Control panel', x:246, y:96, t:'Buttons and lights to power on, cancel jobs and see errors like “out of paper”.' },
+      { l:'Ink/toner cover', x:106, y:124, t:'Opens to reach the ink cartridges or toner that make the print.' },
+      { l:'Output tray', x:150, y:172, t:'Printed pages come out here.' }
+    ],
+    body:() => `${SH(150,212,132,7)}
+      <path d="M72 6 H228 L238 56 H62Z" fill="#fff" stroke="#c8cdd6"/>
+      <path d="M30 72 L60 34 H240 L270 72Z" fill="#eef0f4"/>
+      <rect x="10" y="70" width="280" height="122" rx="14" fill="#d5d9e0"/>
+      <rect x="10" y="70" width="280" height="10" rx="5" fill="#e6e9ee"/>
+      <rect x="28" y="116" width="176" height="9" rx="3" fill="#9aa2ae"/>
+      <rect x="214" y="84" width="62" height="26" rx="5" fill="#262c38"/>
+      <circle cx="226" cy="97" r="4" fill="#35e08a"/><circle cx="240" cy="97" r="4" fill="#5a6577"/><rect x="252" y="93" width="16" height="8" rx="3" fill="#5a6577"/>
+      <rect x="38" y="148" width="224" height="26" rx="5" fill="#a8afbb"/>
+      <rect x="56" y="156" width="188" height="28" fill="#fff" stroke="#c8cdd6"/>
+      <rect x="62" y="164" width="120" height="3" fill="#d6dae2"/><rect x="62" y="172" width="150" height="3" fill="#d6dae2"/>`
+  }
+};
+const ORDER = ['monitor', 'keyboard', 'mouse', 'printer'];
+const svgOf = d => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${d.vw} ${d.vh}" width="${d.vw}" height="${d.vh}">${d.body()}</svg>`;
+
+/* ---------- state ---------- */
+const S = { items: [], sel: null, uid: 0, part: null, sheetOff: false, camOn: false, facing: 'environment', stream: null, mirror: false };
+
+let tt;
+function toast(m, ms = 2400) { const t = $('#toast'); t.textContent = m; t.style.opacity = 1; clearTimeout(tt); tt = setTimeout(() => t.style.opacity = 0, ms); }
+
+/* ---------- scene items ---------- */
+function place(it) {
+  const e = it.el;
+  e.style.left = (it.x * 100) + '%'; e.style.top = (it.y * 100) + '%';
+  e.style.transform = `translate(-50%,-50%) rotate(${it.r}deg) scale(${it.s})`;
+  e.style.zIndex = Math.round(it.y * 1000);
+}
+function mount(it) {
+  const d = it.def, el = document.createElement('div');
+  el.className = 'item'; el.dataset.uid = it.uid; el.style.width = (d.w * 100) + '%';
+  el.innerHTML = svgOf(d) + d.parts.map((p, i) => `<i class="hs" data-i="${i}" style="left:${p.x / d.vw * 100}%;top:${p.y / d.vh * 100}%">${i + 1}</i>`).join('');
+  layer.appendChild(el); it.el = el; place(it);
+}
+function addItem(d, o = {}) {
+  const it = { uid: ++S.uid, def: d, x: o.x ?? d.pos[0], y: o.y ?? d.pos[1], s: o.s ?? 1, r: o.r ?? 0 };
+  S.items.push(it); mount(it);
+  if (!o.silent) { select(it.uid); persist(); }
+  return it;
+}
+const cur = () => S.items.find(i => i.uid === S.sel);
+function select(uid) {
+  if (S.sel !== uid) { S.part = null; S.sheetOff = false; }
+  S.sel = uid;
+  S.items.forEach(i => i.el.classList.toggle('sel', i.uid === uid));
+  document.querySelectorAll('.ctl').forEach(b => b.disabled = !uid);
+  const it = cur();
+  if (it) document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.k === it.def.k));
+  renderSheet();
+}
+function removeItem(it) {
+  it.el.remove(); S.items = S.items.filter(i => i !== it);
+  if (S.sel === it.uid) select(null);
+  persist();
+}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S.items.map(i => ({ k: i.def.k, x: i.x, y: i.y, s: i.s, r: i.r })))); } catch (e) {} }
+function defaultScene() {
+  S.items.forEach(i => i.el.remove()); S.items = []; S.sel = null;
+  addItem(DEFS.keyboard, { silent: true }); addItem(DEFS.mouse, { silent: true });
+  const m = addItem(DEFS.monitor, { silent: true });
+  select(m.uid); persist();
+}
+function restore() {
+  let ok = false;
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const a = JSON.parse(raw); a.forEach(o => { if (DEFS[o.k]) addItem(DEFS[o.k], { x: o.x, y: o.y, s: o.s, r: o.r, silent: true }); }); ok = a.length > 0; }
+  } catch (e) {}
+  if (!ok) defaultScene(); else select(S.items[S.items.length - 1].uid);
+}
+
+/* tabs: place device or select it */
+$('#tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if (!t) return;
+  const d = DEFS[t.dataset.k];
+  const ex = S.items.find(i => i.def === d);
+  if (ex) select(ex.uid); else { addItem(d); toast(d.name + ' placed — drag it where you want'); }
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+});
+
+/* info sheet */
+function renderSheet() {
+  const sh = $('#sheet'), it = cur();
+  if (!it || S.sheetOff) { sh.hidden = true; return; }
+  const d = it.def; sh.hidden = false;
+  $('#shName').textContent = d.name; $('#shTag').textContent = d.kind;
+  $('#shText').textContent = S.part != null ? `${S.part + 1}. ${d.parts[S.part].l}: ${d.parts[S.part].t}` : d.desc;
+  $('#shFact').textContent = S.part != null ? '' : d.fact;
+  const box = $('#chips'); box.innerHTML = '';
+  d.parts.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (S.part === i ? ' on' : ''); b.textContent = (i + 1) + '. ' + p.l;
+    b.addEventListener('click', () => { S.part = S.part === i ? null : i; renderSheet(); });
+    box.appendChild(b);
+  });
+  it.el.querySelectorAll('.hs').forEach(h => h.classList.toggle('on', +h.dataset.i === S.part));
+}
+$('#shClose').addEventListener('click', () => { S.sheetOff = true; renderSheet(); });
+
+/* side buttons */
+function act(a) {
+  const it = cur(); if (!it) return;
+  if (a === 'rotate') it.r = (it.r + 15) % 360;
+  if (a === 'bigger') it.s = clamp(it.s * 1.12, .3, 3.5);
+  if (a === 'smaller') it.s = clamp(it.s / 1.12, .3, 3.5);
+  if (a === 'del') { removeItem(it); return; }
+  place(it); persist();
+}
+document.querySelectorAll('.ctl').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+
+/* ---------- gestures: drag, pinch resize + rotate ---------- */
+const ptrs = new Map(); let G = null;
+function startGesture() {
+  const it = cur();
+  if (!it || !ptrs.size) { G = null; return; }
+  const p = [...ptrs.values()];
+  if (p.length === 1) G = { m: 'drag', sx: p[0].x, sy: p[0].y, ox: it.x, oy: it.y };
+  else G = { m: 'pinch', d0: Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y) || 1, a0: Math.atan2(p[1].y - p[0].y, p[1].x - p[0].x), s0: it.s, r0: it.r };
+}
+layer.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.item');
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) select(el ? +el.dataset.uid : null);
+  startGesture();
+  try { layer.setPointerCapture(e.pointerId); } catch (_) {}
+});
+layer.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const it = cur(); if (!it || !G) return;
+  const r = stage.getBoundingClientRect();
+  if (G.m === 'drag' && ptrs.size === 1) {
+    it.x = clamp(G.ox + (e.clientX - G.sx) / r.width, 0, 1);
+    it.y = clamp(G.oy + (e.clientY - G.sy) / r.height, 0, 1);
+  } else if (G.m === 'pinch' && ptrs.size >= 2) {
+    const [a, b] = [...ptrs.values()];
+    it.s = clamp(G.s0 * Math.hypot(b.x - a.x, b.y - a.y) / G.d0, .3, 3.5);
+    it.r = G.r0 + (Math.atan2(b.y - a.y, b.x - a.x) - G.a0) * 180 / Math.PI;
+  }
+  place(it);
+});
+const endPtr = e => { if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); startGesture(); persist(); };
+layer.addEventListener('pointerup', endPtr);
+layer.addEventListener('pointercancel', endPtr);
+layer.addEventListener('wheel', e => {
+  const it = cur(); if (!it) return; e.preventDefault();
+  if (e.shiftKey) it.r += e.deltaY > 0 ? 6 : -6; else it.s = clamp(it.s * (e.deltaY > 0 ? .95 : 1.05), .3, 3.5);
+  place(it); persist();
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  const it = cur(); if (!it) return;
+  const k = e.key, st = .01;
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); removeItem(it); return; }
+  if (k === '+' || k === '=') act('bigger');
+  else if (k === '-' || k === '_') act('smaller');
+  else if (k === 'r' || k === 'R') act('rotate');
+  else if (k === 'ArrowLeft') it.x = clamp(it.x - st, 0, 1);
+  else if (k === 'ArrowRight') it.x = clamp(it.x + st, 0, 1);
+  else if (k === 'ArrowUp') it.y = clamp(it.y - st, 0, 1);
+  else if (k === 'ArrowDown') it.y = clamp(it.y + st, 0, 1);
+  else return;
+  e.preventDefault(); place(it); persist();
+});
+
+/* ---------- camera ---------- */
+function stopStream() { if (S.stream) { S.stream.getTracks().forEach(t => t.stop()); S.stream = null; } video.srcObject = null; }
+function setCamUI(on) {
+  S.camOn = on;
+  $('#camTxt').textContent = on ? 'Stop Camera' : 'Start Camera';
+  $('#camIco').textContent = on ? '⏹' : '📷';
+  $('#swBtn').hidden = !on;
+  video.hidden = !on; demo.hidden = on;
+}
+function showMsg(t) { $('#msgTxt').textContent = t; $('#msg').hidden = false; }
+async function startCamera() {
+  stopStream();
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('x'), { name: 'Insecure' });
+    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: S.facing }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    S.stream = s; video.srcObject = s; await video.play();
+    const fm = s.getVideoTracks()[0].getSettings().facingMode;
+    S.mirror = fm ? fm === 'user' : !isMobile;
+    video.classList.toggle('mirror', S.mirror);
+    setCamUI(true);
+    toast('Camera on — drag the equipment into your room');
+  } catch (err) {
+    setCamUI(false);
+    const n = err && err.name;
+    showMsg(n === 'NotAllowedError' || n === 'SecurityError' ? 'Camera permission was blocked. Allow camera access in your browser settings and try again.'
+      : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'No camera was found on this device.'
+      : n === 'NotReadableError' ? 'The camera is being used by another app. Close it and try again.'
+      : 'The camera needs a secure page. Open this app over https:// or http://localhost. The demo room still works.');
+  }
+}
+function stopCamera() { stopStream(); setCamUI(false); }
+$('#camBtn').addEventListener('click', () => S.camOn ? stopCamera() : startCamera());
+$('#swBtn').addEventListener('click', () => { S.facing = S.facing === 'environment' ? 'user' : 'environment'; startCamera(); });
+$('#msgOk').addEventListener('click', () => $('#msg').hidden = true);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S.camOn) { stopStream(); S.resume = true; }
+  else if (!document.hidden && S.resume) { S.resume = false; startCamera(); }
+});
+
+/* ---------- photo ---------- */
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const svgImg = s => loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s));
+function drawCover(ctx, src, vw, vh, W, H, mirror) {
+  const k = Math.max(W / vw, H / vh), dw = vw * k, dh = vh * k;
+  ctx.save(); if (mirror) { ctx.translate(W, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore();
+}
+let photoUrl = null;
+async function takePhoto() {
+  const W = stage.clientWidth, H = stage.clientHeight, K = 2;
+  const c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
+  const ctx = c.getContext('2d'); ctx.scale(K, K);
+  try {
+    if (S.camOn && video.videoWidth) drawCover(ctx, video, video.videoWidth, video.videoHeight, W, H, S.mirror);
+    else drawCover(ctx, await svgImg(new XMLSerializer().serializeToString(demo)), 400, 500, W, H, false);
+    for (const it of [...S.items].sort((a, b) => a.y - b.y)) {
+      const img = await svgImg(svgOf(it.def));
+      const w = it.def.w * W, h = w * it.def.vh / it.def.vw;
+      ctx.save(); ctx.translate(it.x * W, it.y * H); ctx.rotate(it.r * Math.PI / 180); ctx.scale(it.s, it.s);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(18,48,107,.85)'; ctx.fillRect(0, H - 24, W, 24);
+    ctx.fillStyle = '#fff'; ctx.font = '600 12px Segoe UI, Arial, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('ULK • HCI Project — AR Learning Laboratory', W / 2, H - 8);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = URL.createObjectURL(blob);
+    $('#photoImg').src = photoUrl;
+    const dl = $('#dlBtn'); dl.href = photoUrl; dl.download = 'ar-lab-' + Date.now() + '.png';
+    const file = new File([blob], 'ar-lab.png', { type: 'image/png' });
+    const sh = $('#shareBtn'); sh.hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
+    sh.onclick = () => navigator.share({ files: [file], title: 'AR Learning Laboratory' }).catch(() => {});
+    const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+    setTimeout(() => $('#photoModal').hidden = false, 250);
+  } catch (e) { toast('Could not capture photo'); }
+}
+$('#snapBtn').addEventListener('click', takePhoto);
+$('#closePhoto').addEventListener('click', () => $('#photoModal').hidden = true);
+
+/* ---------- misc ---------- */
+$('#aboutBtn').addEventListener('click', () => $('#aboutModal').hidden = false);
+$('#closeAbout').addEventListener('click', () => $('#aboutModal').hidden = true);
+$('#homeBtn').addEventListener('click', () => { stopCamera(); defaultScene(); toast('Back to the start'); });
+
+/* ---------- init ---------- */
+restore();
+if (!window.isSecureContext && location.protocol !== 'file:') setTimeout(() => toast('Camera needs https:// or localhost — demo room works now', 4200), 400);
+})();
+</script>
+</body>
+</html>
